@@ -37,7 +37,7 @@ body,
 .app-shell {
   height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 12px;
   padding: clamp(10px, 2vw, 18px);
 }
