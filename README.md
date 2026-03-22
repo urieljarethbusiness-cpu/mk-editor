@@ -50,8 +50,17 @@ npm run preview
 - `src/styles.css`: UI premium tipo dashboard.
 - `start-local.bat` y `stop-local.bat`: utilidades Windows para pruebas locales.
 
-## Flujo para GitHub + Qualify
+## Flujo para GitHub + Coolify
 
-1. Publicar este repositorio como público en GitHub.
-2. Desde Qualify, importar el repositorio por URL pública.
-3. Ejecutar instalación y arranque con scripts estándar (`npm install`, `npm run dev`) o usar build (`npm run build`).
+1. Publicar este repositorio en GitHub.
+2. En Coolify, crear recurso tipo **Application** e importar el repositorio.
+3. Usar despliegue por Dockerfile (detecta automáticamente [`Dockerfile`](Dockerfile)).
+
+### Configuración recomendada en Coolify
+
+- **Build Pack**: Dockerfile
+- **Dockerfile Location**: `./Dockerfile`
+- **Port interno**: `80`
+- **Healthcheck Path**: `/healthz`
+
+El contenedor genera `dist` con Vite y lo sirve con Nginx mediante [`nginx.conf`](nginx.conf).
