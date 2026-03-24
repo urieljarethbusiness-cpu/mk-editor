@@ -374,6 +374,43 @@ export default function App() {
     event.target.value = '';
   };
 
+  const copySource = async () => {
+    await navigator.clipboard.writeText(markdownText);
+    setSaveLabel('Source copied');
+  };
+
+  const pasteSource = async () => {
+    const text = await navigator.clipboard.readText();
+    if (!text) return;
+    setMarkdownText(text);
+    setEditingSide('source');
+    setSaveLabel('Source pasted');
+  };
+
+  const copyPreview = async () => {
+    const htmlContent = previewHost.current?.innerHTML || '';
+    const textContent = previewHost.current?.innerText || '';
+    if ('ClipboardItem' in window) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([htmlContent], { type: 'text/html' }),
+          'text/plain': new Blob([textContent], { type: 'text/plain' }),
+        }),
+      ]);
+    } else {
+      await navigator.clipboard.writeText(textContent);
+    }
+    setSaveLabel('Preview copied');
+  };
+
+  const pastePreview = async () => {
+    const text = await navigator.clipboard.readText();
+    if (!text) return;
+    setMarkdownText(text);
+    setEditingSide('preview');
+    setSaveLabel('Preview pasted');
+  };
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -418,8 +455,15 @@ export default function App() {
       <section className="workbench">
         <article className={`panel source-panel ${editingSide === 'source' ? 'panel-editing' : ''}`}>
           <div className="panel-head">
-            Markdown Source
-            <span className="panel-tag">CodeMirror</span>
+            <span className="panel-title">Markdown Source</span>
+            <div className="panel-head-right">
+              {editingSide === 'source' && <span className="panel-editing-badge">Editing</span>}
+              <span className="panel-tag">CodeMirror</span>
+              <div className="panel-actions">
+                <button className="panel-action-btn" onClick={copySource} type="button" aria-label="Copy source markdown">Copy</button>
+                <button className="panel-action-btn" onClick={pasteSource} type="button" aria-label="Paste into source">Paste</button>
+              </div>
+            </div>
           </div>
           <div ref={editorHost} className="editor-host" />
           <div className="sync-arrow sync-arrow-right">➜</div>
@@ -427,8 +471,15 @@ export default function App() {
 
         <article className={`panel preview-panel ${editingSide === 'preview' ? 'panel-editing' : ''}`}>
           <div className="panel-head">
-            Rich Preview
-            <span className="panel-tag">WYSIWYG Flow</span>
+            <span className="panel-title">Rich Preview</span>
+            <div className="panel-head-right">
+              {editingSide === 'preview' && <span className="panel-editing-badge">Editing</span>}
+              <span className="panel-tag">WYSIWYG Flow</span>
+              <div className="panel-actions">
+                <button className="panel-action-btn" onClick={copyPreview} type="button" aria-label="Copy rendered preview">Copy</button>
+                <button className="panel-action-btn" onClick={pastePreview} type="button" aria-label="Paste into preview">Paste</button>
+              </div>
+            </div>
           </div>
           <div ref={previewStageRef} className="preview-stage">
             <div ref={previewHost} className="preview-host" dangerouslySetInnerHTML={{ __html: html }} />
