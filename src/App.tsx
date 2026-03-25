@@ -156,6 +156,8 @@ export default function App() {
   const [saveLabel, setSaveLabel] = useState('Saved');
   const [editingSide, setEditingSide] = useState<'source' | 'preview'>('source');
   const [previewEdit, setPreviewEdit] = useState<PreviewEditState | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const [importHint, setImportHint] = useState('Drop a .md or .txt file to load it into the editor');
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -365,13 +367,52 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const processImportedFile = async (file: File) => {
+    const isMarkdown = file.name.toLowerCase().endsWith('.md');
+    const isText = file.name.toLowerCase().endsWith('.txt');
+    const isAcceptedType = file.type === 'text/markdown' || file.type === 'text/plain' || file.type === '';
+
+    if ((!isMarkdown && !isText) || !isAcceptedType) {
+      setImportHint('Unsupported file. Use .md or .txt files only');
+      setSaveLabel('Import blocked');
+      return;
+    }
+
+    const text = await file.text();
+    setMarkdownText(text);
+    setEditingSide('source');
+    setImportHint(`Loaded ${file.name}`);
+    setSaveLabel('Imported');
+  };
+
   const onImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    const text = await file.text();
-    setMarkdownText(text);
-    setSaveLabel('Imported');
+    await processImportedFile(file);
     event.target.value = '';
+  };
+
+  const onDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragActive(true);
+    setImportHint('Release to import the file into the editor');
+  };
+
+  const onDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+    setIsDragActive(false);
+    setImportHint('Drop a .md or .txt file to load it into the editor');
+  };
+
+  const onDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      setImportHint('No file detected. Try again with a .md or .txt file');
+      return;
+    }
+    await processImportedFile(file);
   };
 
   const copySource = async () => {
@@ -413,44 +454,39 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="topbar">
+      <header
+        className={`topbar ${isDragActive ? 'topbar-drop-active' : ''}`}
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
         <div className="title-wrap">
           <h1>MK Prompt Editor</h1>
           <p>Dual-pane Markdown workflow for advanced system prompts</p>
           <div className="title-meta">
             <span className="meta-pill">Live sync</span>
             <span className="meta-pill meta-pill-soft">Bidirectional edit</span>
+            <span className={`meta-pill topbar-drop-pill ${isDragActive ? 'topbar-drop-pill-active' : ''}`}>
+              {importHint}
+            </span>
           </div>
         </div>
-        <div className="toolbar">
-          <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()} aria-label="Import markdown file">
-            Import .md
-          </button>
-          <button className="btn btn-primary" onClick={onExport} aria-label="Export markdown file">
-            Export .md
-          </button>
-          <span className="save-status">
-            <span className="status-dot" />
-            {saveLabel}
-          </span>
+        <div className="topbar-actions">
+          <div className="toolbar">
+            <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()} aria-label="Import markdown or text file">
+              Import file
+            </button>
+            <button className="btn btn-primary" onClick={onExport} aria-label="Export markdown file">
+              Export .md
+            </button>
+            <span className="save-status">
+              <span className="status-dot" />
+              {saveLabel}
+            </span>
+          </div>
         </div>
-        <input ref={fileInputRef} className="hidden-input" type="file" accept=".md,text/markdown" onChange={onImport} />
+        <input ref={fileInputRef} className="hidden-input" type="file" accept=".md,.txt,text/markdown,text/plain" onChange={onImport} />
       </header>
-
-      <section className="insight-bar" aria-label="Editor insights">
-        <article className="insight-card">
-          <span className="insight-label">Lines</span>
-          <strong>{metrics.lines}</strong>
-        </article>
-        <article className="insight-card">
-          <span className="insight-label">Words</span>
-          <strong>{metrics.words}</strong>
-        </article>
-        <article className="insight-card">
-          <span className="insight-label">Characters</span>
-          <strong>{metrics.chars}</strong>
-        </article>
-      </section>
 
       <section className="workbench">
         <article className={`panel source-panel ${editingSide === 'source' ? 'panel-editing' : ''}`}>
@@ -519,7 +555,23 @@ export default function App() {
         </article>
       </section>
 
-      <footer className="statusbar">{status}</footer>
+      <footer className="statusbar">
+        <span className="statusbar-text">{status}</span>
+        <section className="insight-bar statusbar-insights" aria-label="Editor insights">
+          <article className="insight-card">
+            <span className="insight-label">Lines</span>
+            <strong>{metrics.lines}</strong>
+          </article>
+          <article className="insight-card">
+            <span className="insight-label">Words</span>
+            <strong>{metrics.words}</strong>
+          </article>
+          <article className="insight-card">
+            <span className="insight-label">Characters</span>
+            <strong>{metrics.chars}</strong>
+          </article>
+        </section>
+      </footer>
     </div>
   );
 }
